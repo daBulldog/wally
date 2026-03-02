@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Year · Dot Matrix</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --dot-done: #e8e0d0;
+    --dot-future: #1e1e1e;
+    --dot-today: #c9a96e;
+    --accent: #c9a96e;
+    --text: #6b6560;
+    --text-bright: #c9a96e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    color: var(--text);
+    padding: 40px 20px;
+    gap: 40px;
+  }
+
+  .header {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .year-label {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    color: var(--text-bright);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .subtitle {
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  /* Canvas wrapper */
+  .canvas-wrap {
+    position: relative;
+  }
+
+  canvas {
+    display: block;
+    border-radius: 4px;
+  }
+
+  /* Stats row */
+  .stats {
+    display: flex;
+    gap: 40px;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .stat-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    color: var(--dot-done);
+    line-height: 1;
+  }
+
+  .stat-label {
+    color: var(--text);
+    font-size: 0.6rem;
+  }
+
+  /* Download / shortcut section */
+  .actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 14px 24px;
+    background: transparent;
+    border: 1px solid #2a2a2a;
+    color: var(--dot-done);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(201,169,110,0.04);
+  }
+
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0a0a0a;
+  }
+
+  .btn.primary:hover {
+    background: #d4b97e;
+    border-color: #d4b97e;
+  }
+
+  /* iPhone Shortcut instructions */
+  .instructions {
+    width: 100%;
+    max-width: 380px;
+    border: 1px solid #1e1e1e;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .instructions summary {
+    padding: 14px 18px;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: var(--text);
+    user-select: none;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .instructions summary::after {
+    content: '+';
+    font-size: 1rem;
+    color: var(--accent);
+  }
+
+  details[open] summary::after { content: '−'; }
+
+  .instructions-body {
+    padding: 0 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 0.65rem;
+    line-height: 1.7;
+    color: #5a5550;
+  }
+
+  .step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    color: var(--accent);
+    min-width: 16px;
+    font-size: 0.6rem;
+    padding-top: 2px;
+  }
+
+  code {
+    background: #141414;
+    padding: 2px 6px;
+    border-radius: 2px;
+    color: var(--dot-done);
+    font-size: 0.6rem;
+    word-break: break-all;
+  }
+
+  .divider {
+    width: 1px;
+    height: 40px;
+    background: #1e1e1e;
+  }
+
+  /* Pulse animation for today dot */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="year-label" id="yearLabel">2025</div>
+  <div class="subtitle">days elapsed</div>
+</div>
+
+<div class="canvas-wrap">
+  <canvas id="dotMatrix"></canvas>
+</div>
+
+<div class="stats">
+  <div class="stat">
+    <span class="stat-value" id="statDone">0</span>
+    <span class="stat-label">passed</span>
+  </div>
+  <div class="divider" style="width:1px;height:40px;background:#1e1e1e;align-self:center;"></div>
+  <div class="stat">
+    <span class="stat-value" id="statToday">0</span>
+    <span class="stat-label">today</span>
+  </div>
+  <div class="divider" style="width:1px;height:40px;background:#1e1e1e;align-self:center;"></div>
+  <div class="stat">
+    <span class="stat-value" id="statLeft">0</span>
+    <span class="stat-label">remaining</span>
+  </div>
+</div>
+
+<div class="actions">
+  <button class="btn primary" id="downloadBtn">↓ Save as Wallpaper</button>
+  <button class="btn" id="copyUrlBtn">Copy Image URL for Shortcuts</button>
+</div>
+
+<details class="instructions">
+  <summary>iPhone Shortcut Setup</summary>
+  <div class="instructions-body">
+    <div class="step">
+      <span class="step-num">01</span>
+      <span>Open the <strong style="color:#c9a96e">Shortcuts</strong> app on your iPhone.</span>
+    </div>
+    <div class="step">
+      <span class="step-num">02</span>
+      <span>Tap <strong style="color:#c9a96e">+</strong> to create a new shortcut. Name it <em>"Year Wallpaper"</em>.</span>
+    </div>
+    <div class="step">
+      <span class="step-num">03</span>
+      <span>Add action: <strong style="color:#c9a96e">Get Contents of URL</strong> and paste the URL below into it:<br><br>
+      <code id="imageUrl">Loading...</code></span>
+    </div>
+    <div class="step">
+      <span class="step-num">04</span>
+      <span>Add action: <strong style="color:#c9a96e">Set Wallpaper</strong>. Set it to apply to <em>Lock Screen</em>, <em>Home Screen</em>, or both.</span>
+    </div>
+    <div class="step">
+      <span class="step-num">05</span>
+      <span>Add action: <strong style="color:#c9a96e">Automation</strong> → set it to run daily at midnight or each morning to auto-update.</span>
+    </div>
+    <div class="step">
+      <span class="step-num">06</span>
+      <span>In <strong style="color:#c9a96e">Automations</strong> tab, create a <em>Time of Day</em> automation (e.g. 6:00 AM) and run your shortcut from it.</span>
+    </div>
+  </div>
+</details>
+
+<script>
+  // ── Config ──────────────────────────────────────────────────────────────
+  const COLS = 25;         // dots per row
+  const DOT_R = 7;         // dot radius px
+  const GAP = 6;           // gap between dots
+  const PAD = 28;          // canvas padding
+  const PHONE_W = 1170;    // iPhone export width
+  const PHONE_H = 2532;    // iPhone export height (iPhone 14 Pro)
+
+  // ── Date Math ────────────────────────────────────────────────────────────
+  function getDayOfYear(date) {
+    const start = new Date(date.getFullYear(), 0, 0);
+    const diff = date - start + ((start.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000);
+    return Math.floor(diff / 86400000);
+  }
+
+  function isLeapYear(year) {
+    return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  }
+
+  const today = new Date();
+  const YEAR = today.getFullYear();
+  const TOTAL_DAYS = isLeapYear(YEAR) ? 366 : 365;
+  const DAY_OF_YEAR = getDayOfYear(today);
+
+  // Update header
+  document.getElementById('yearLabel').textContent = YEAR;
+  document.getElementById('statDone').textContent = DAY_OF_YEAR - 1;
+  document.getElementById('statToday').textContent = DAY_OF_YEAR;
+  document.getElementById('statLeft').textContent = TOTAL_DAYS - DAY_OF_YEAR;
+
+  // ── Draw Function ────────────────────────────────────────────────────────
+  function drawMatrix(canvas, opts = {}) {
+    const {
+      cols = COLS,
+      dotR = DOT_R,
+      gap = GAP,
+      pad = PAD,
+      forExport = false,
+      exportW = PHONE_W,
+      exportH = PHONE_H,
+    } = opts;
+
+    const ctx = canvas.getContext('2d');
+    const ROWS = Math.ceil(TOTAL_DAYS / cols);
+
+    let w, h, r, g, p;
+
+    if (forExport) {
+      // Scale dots to fill phone canvas nicely
+      p = Math.round(exportW * 0.07);
+      const availW = exportW - p * 2;
+      const availH = exportH - p * 2;
+      r = Math.floor(Math.min(availW / cols, availH / ROWS) / 2) - 1;
+      r = Math.max(r, 8);
+      g = Math.round(r * 0.7);
+      w = exportW;
+      h = exportH;
+    } else {
+      r = dotR; g = gap; p = pad;
+      w = p * 2 + cols * (r * 2 + g) - g;
+      h = p * 2 + ROWS * (r * 2 + g) - g;
+    }
+
+    canvas.width = w;
+    canvas.height = h;
+
+    // Background
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, w, h);
+
+    // If export, center the grid vertically
+    const gridW = cols * (r * 2 + g) - g;
+    const gridH = ROWS * (r * 2 + g) - g;
+    const offsetX = forExport ? Math.round((w - gridW) / 2) : p;
+    const offsetY = forExport ? Math.round((h - gridH) / 2) : p;
+
+    for (let i = 0; i < TOTAL_DAYS; i++) {
+      const day = i + 1;
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const cx = offsetX + col * (r * 2 + g) + r;
+      const cy = offsetY + row * (r * 2 + g) + r;
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+
+      if (day < DAY_OF_YEAR) {
+        ctx.fillStyle = '#e8e0d0';
+      } else if (day === DAY_OF_YEAR) {
+        ctx.fillStyle = '#c9a96e';
+      } else {
+        ctx.fillStyle = '#1e1e1e';
+      }
+
+      ctx.fill();
+    }
+
+    // If export, add subtle year label at bottom
+    if (forExport) {
+      ctx.font = `bold ${Math.round(w * 0.06)}px serif`;
+      ctx.fillStyle = 'rgba(201,169,110,0.25)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(YEAR, w / 2, h - Math.round(h * 0.025));
+    }
+  }
+
+  // ── Preview Canvas ───────────────────────────────────────────────────────
+  const previewCanvas = document.getElementById('dotMatrix');
+  drawMatrix(previewCanvas);
+
+  // Cap preview width for small screens
+  const maxW = Math.min(window.innerWidth - 40, 520);
+  if (previewCanvas.width > maxW) {
+    previewCanvas.style.width = maxW + 'px';
+    previewCanvas.style.height = 'auto';
+  }
+
+  // ── Today-dot pulse via redraw interval ──────────────────────────────────
+  let pulseUp = true;
+  let pulseAlpha = 1.0;
+  function pulse() {
+    pulseAlpha += pulseUp ? 0.03 : -0.03;
+    if (pulseAlpha >= 1.0) pulseUp = false;
+    if (pulseAlpha <= 0.3) pulseUp = true;
+
+    const ctx = previewCanvas.getContext('2d');
+    // Just redraw today dot with animated alpha
+    const cols = COLS, r = DOT_R, g = GAP, p = PAD;
+    const i = DAY_OF_YEAR - 1;
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const cx = p + col * (r * 2 + g) + r;
+    const cy = p + row * (r * 2 + g) + r;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(201,169,110,${pulseAlpha})`;
+    ctx.fill();
+  }
+  setInterval(pulse, 40);
+
+  // ── Download ─────────────────────────────────────────────────────────────
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    const exportCanvas = document.createElement('canvas');
+    drawMatrix(exportCanvas, { forExport: true });
+    const link = document.createElement('a');
+    link.download = `year-${YEAR}-day-${DAY_OF_YEAR}.png`;
+    link.href = exportCanvas.toDataURL('image/png');
+    link.click();
+  });
+
+  // ── Copy URL ─────────────────────────────────────────────────────────────
+  const pageUrl = window.location.href.split('?')[0];
+  // The shortcuts URL hits this page — but since it's a canvas, we provide
+  // a direct image endpoint note. We'll use a data URL approach via the
+  // /image query param to auto-download image.
+  const imageEndpoint = pageUrl + '?image=1';
+  document.getElementById('imageUrl').textContent = imageEndpoint;
+
+  document.getElementById('copyUrlBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(imageEndpoint).then(() => {
+      const btn = document.getElementById('copyUrlBtn');
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied';
+      btn.style.borderColor = '#c9a96e';
+      btn.style.color = '#c9a96e';
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.style.borderColor = '';
+        btn.style.color = '';
+      }, 2000);
+    });
+  });
+
+  // ── Auto-render image if ?image=1 ────────────────────────────────────────
+  // When Shortcuts fetches this URL, it gets HTML. The trick:
+  // redirect to a data URL or use a meta-refresh to the image.
+  // Instead, we detect the param and replace the page with just the image.
+  if (new URLSearchParams(window.location.search).get('image') === '1') {
+    document.body.innerHTML = '<canvas id="ex"></canvas>';
+    const ec = document.getElementById('ex');
+    drawMatrix(ec, { forExport: true });
+    ec.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      document.body.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;display:block;margin:0;padding:0;">`;
+      document.body.style.margin = '0';
+    }, 'image/png');
+  }
+</script>
+</body>
+</html>
